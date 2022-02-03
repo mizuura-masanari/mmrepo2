@@ -1,0 +1,50 @@
+name: Create module
+
+on:
+  push:
+    branches: 
+      - main
+  workflow_dispatch:
+
+jobs:
+  create-module:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Create module
+        run: |
+
+          cd src
+          zip -r ../result.zip . \
+          -x vendor/\* composer.lock
+
+      - name: Set current datetime as env variable
+        env:
+          TZ: 'Asia/Tokyo' # タイムゾーン指定
+        run: echo "CURRENT_DATETIME=$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
+
+      - name: Show current datetime
+        run: echo ${{ env.CURRENT_DATETIME }}
+
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./result.zip
+          asset_name: src-PROD-sbivc_co_jp-${{ env.CURRENT_DATETIME }}.zip
+          asset_content_type: application/zip
